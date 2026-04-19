@@ -1,24 +1,34 @@
 const express = require("express");
 const errorHandler = require("./middleware/error-handler");
 const notFound = require("./middleware/not-found");
+const userRouter = require("./routes/userRoutes");
 const app = express();
 
-// Task 5: Logging middleware — goes above all routes
+// Global state
+global.user_id = null;
+global.users = [];
+global.tasks = [];
+
+// Logging middleware
 app.use((req, res, next) => {
-  console.log(
-    `Method: ${req.method}, Path: ${req.path}, Query: ${JSON.stringify(req.query)}`
-  );
+  console.log(`Method: ${req.method}, Path: ${req.path}, Query: ${JSON.stringify(req.query)}`);
   next();
 });
 
-// Task 4: POST route
-app.post("/testpost", (req, res) => {
-  res.send("POST request received at /testpost!");
+// Body parsing middleware
+app.use(express.json({ limit: "1kb" }));
+
+// Routes
+app.get("/", (req, res) => {
+  res.json({ message: "Hello, World!" });
 });
 
-app.get("/", (req, res) => {
-  res.send("Hello, World!");
+app.post("/testpost", (req, res) => {
+  res.json({ message: "POST request received at /testpost!" });
 });
+
+// User routes
+app.use("/api/users", userRouter);
 
 app.use(notFound);
 app.use(errorHandler);
@@ -43,7 +53,7 @@ async function shutdown(code = 0) {
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
   try {
-    await new Promise((resolve) => server.close(resolve));
+    await new Promise(resolve => server.close(resolve));
     console.log("HTTP server closed.");
   } catch (err) {
     console.error("Error during shutdown:", err);
