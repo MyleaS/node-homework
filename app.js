@@ -2,6 +2,11 @@ const express = require("express");
 const errorHandler = require("./middleware/error-handler");
 const notFound = require("./middleware/not-found");
 const userRouter = require("./routes/userRoutes");
+
+// ✅ ADD THESE
+const authMiddleware = require("./middleware/auth");
+const taskRouter = require("./routers/taskRoutes");
+
 const app = express();
 
 // Global state
@@ -11,7 +16,9 @@ global.tasks = [];
 
 // Logging middleware
 app.use((req, res, next) => {
-  console.log(`Method: ${req.method}, Path: ${req.path}, Query: ${JSON.stringify(req.query)}`);
+  console.log(
+    `Method: ${req.method}, Path: ${req.path}, Query: ${JSON.stringify(req.query)}`
+  );
   next();
 });
 
@@ -27,9 +34,13 @@ app.post("/testpost", (req, res) => {
   res.json({ message: "POST request received at /testpost!" });
 });
 
-// User routes
+// User routes (NOT protected)
 app.use("/api/users", userRouter);
 
+// ✅ PROTECTED task routes
+app.use("/api/tasks", authMiddleware, taskRouter);
+
+// Error handling (keep these LAST)
 app.use(notFound);
 app.use(errorHandler);
 
@@ -53,7 +64,7 @@ async function shutdown(code = 0) {
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
   try {
-    await new Promise(resolve => server.close(resolve));
+    await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
   } catch (err) {
     console.error("Error during shutdown:", err);
