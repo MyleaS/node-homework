@@ -1,0 +1,18 @@
+# Task 1: Find the total price of each of the first 5 orders, ordered by order_id.
+SELECT orders.order_id, SUM(products.price * line_items.quantity) AS total_price FROM orders JOIN line_items ON orders.order_id = line_items.order_id JOIN products ON line_items.product_id = products.product_id GROUP BY orders.order_id ORDER BY orders.order_id LIMIT 5;
+
+# Task 2: For each customer, find the average total price of their orders, ordered by customer name.
+SELECT c.customer_name, AVG(t.total_price) AS average_order_price FROM customers c JOIN (SELECT orders.order_id, orders.customer_id, SUM(products.price * line_items.quantity) AS total_price FROM orders JOIN line_items ON orders.order_id = line_items.order_id JOIN products ON line_items.product_id = products.product_id GROUP BY orders.order_id) AS t ON c.customer_id = t.customer_id GROUP BY c.customer_id, c.customer_name ORDER BY c.customer_name;
+
+# Task 3: Creating a new order for Perez and Sons with Miranda Harris as employee.
+SELECT customer_id FROM customers WHERE customer_name = 'Perez and Sons';
+SELECT employee_id FROM employees WHERE first_name = 'Miranda' AND last_name = 'Harris';
+SELECT product_id FROM products ORDER BY price ASC LIMIT 5;
+BEGIN;
+INSERT INTO orders (customer_id, employee_id, date) VALUES (16, 7, '2025-01-01') RETURNING order_id;
+INSERT INTO line_items (order_id, product_id, quantity) VALUES (250, 23, 10), (250, 18, 10), (250, 43, 10), (250, 9, 10), (250, 44, 10);
+COMMIT;
+SELECT * FROM line_items WHERE order_id = 250;
+
+# Task 4: Find employees associated with more than 5 orders.
+SELECT employees.first_name, employees.last_name, COUNT(orders.order_id) AS order_count FROM employees JOIN orders ON employees.employee_id = orders.employee_id GROUP BY employees.employee_id, first_name, last_name HAVING COUNT(order_id) > 5 ORDER BY last_name;
