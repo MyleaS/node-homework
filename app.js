@@ -7,6 +7,7 @@ const userRouter = require("./routes/userRoutes");
 const authMiddleware = require("./middleware/auth");
 const taskRouter = require("./routers/taskRoutes");
 
+const pool = require("./db/pg-pool");
 const app = express();
 
 // Global state
@@ -28,6 +29,17 @@ app.use(express.json({ limit: "1kb" }));
 // Routes
 app.get("/", (req, res) => {
   res.json({ message: "Hello, World!" });
+});
+
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok", db: "connected" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: `db not connected, error: ${err.message}` });
+  }
 });
 
 app.post("/testpost", (req, res) => {
@@ -64,6 +76,7 @@ async function shutdown(code = 0) {
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
   try {
+    await pool.end();
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
   } catch (err) {
