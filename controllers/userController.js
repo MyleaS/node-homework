@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const util = require("util");
 const { userSchema } = require("../validation/userSchema");
-const pool = require("../db/pg-pool");
+const prisma = require("../db/prisma"); // REPLACED pool with prisma
 
 const scrypt = util.promisify(crypto.scrypt);
 
@@ -26,40 +26,57 @@ const register = async (req, res, next) => {
   if (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({ message: error.message });
   }
-  value.hashed_password = await hashPassword(value.password);
+  const hashedPassword = await hashPassword(value.password);
   let user = null;
   try {
-    user = await pool.query(
-      `INSERT INTO users (email, name, hashed_password) VALUES ($1, $2, $3) RETURNING id, email, name`,
-      [value.email, value.name, value.hashed_password]
-    );
-  } catch (e) {
-    if (e.code === "23505") {
-      return res.status(StatusCodes.BAD_REQUEST).json({ message: "Email is already registered." });
+    user = await prisma.user.create({
+      data: { name: value.name, email: value.email, hashedPassword },
+      select: { id: true, name: true, email: true },
+    });
+  } catch (err) {
+    if (err.code === "P2002") {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ message: "Email is already registered." });
     }
-    return next(e);
+    return next(err);
   }
-  global.user_id = user.rows[0].id;
-  return res.status(StatusCodes.CREATED).json({ name: user.rows[0].name, email: user.rows[0].email });
+  global.user_id = user.id;
+  return res
+    .status(StatusCodes.CREATED)
+    .json({ name: user.name, email: user.email });
 };
 
-const logon = async (req, res) => {
-  const { email, password } = req.body;
-  const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-  if (result.rows.length === 0) {
-    return res.status(StatusCodes.UNAUTHORIZED).json({ message: "Authentication Failed" });
+const logon = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    const normalizedEmail = email.toLowerCase();
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (!user) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ message: "Authentication Failed" });
+    }
+    const match = await comparePassword(password, user.hashedPassword);
+    if (!match) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ message: "Authentication Failed" });
+    }
+    global.user_id = user.id;
+    const token = jwt.sign(
+      { userId: user.id, name: user.name },
+      process.env.JWT_SECRET || "your_secret",
+      { expiresIn: "1h" }
+    );
+    return res
+      .status(StatusCodes.OK)
+      .json({ name: user.name, email: user.email, token });
+  } catch (err) {
+    next(err);
   }
-  const match = await comparePassword(password, result.rows[0].hashed_password);
-  if (!match) {
-    return res.status(StatusCodes.UNAUTHORIZED).json({ message: "Authentication Failed" });
-  }
-  global.user_id = result.rows[0].id;
-  const token = jwt.sign(
-    { userId: result.rows[0].id, name: result.rows[0].name },
-    process.env.JWT_SECRET || "your_secret",
-    { expiresIn: "1h" }
-  );
-  return res.status(StatusCodes.OK).json({ name: result.rows[0].name, email: result.rows[0].email, token });
 };
 
 const logoff = (req, res) => {
