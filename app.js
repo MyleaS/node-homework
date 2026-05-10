@@ -4,9 +4,7 @@ const notFound = require("./middleware/not-found");
 const userRouter = require("./routes/userRoutes");
 const authMiddleware = require("./middleware/auth");
 const taskRouter = require("./routes/taskRoutes");
-
-const pool = require("./db/pg-pool");
-const prisma = require("./db/prisma"); // ADD THIS
+const prisma = require("./db/prisma"); // ONLY database client needed
 
 const app = express();
 
@@ -31,7 +29,6 @@ app.get("/", (req, res) => {
   res.json({ message: "Hello, World!" });
 });
 
-// UPDATED health check to use Prisma
 app.get("/health", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -77,10 +74,8 @@ async function shutdown(code = 0) {
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
   try {
-    await pool.end();
-    console.log("Pool ended.");
-    await prisma.$disconnect(); // ADD THIS
-    console.log("Prisma disconnected."); // ADD THIS
+    await prisma.$disconnect(); // ONLY prisma disconnect -- pool.end() removed
+    console.log("Prisma disconnected.");
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
   } catch (err) {
