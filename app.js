@@ -10,8 +10,6 @@ const app = express();
 
 // Global state
 global.user_id = null;
-global.users = [];
-global.tasks = [];
 
 // Logging middleware
 app.use((req, res, next) => {
