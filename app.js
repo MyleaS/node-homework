@@ -3,7 +3,7 @@ const errorHandler = require("./middleware/error-handler");
 const notFound = require("./middleware/not-found");
 const userRouter = require("./routes/userRoutes");
 const authMiddleware = require("./middleware/auth");
-const taskRouter = require("./routers/taskRoutes");
+const taskRouter = require("./routes/taskRoutes");
 
 const pool = require("./db/pg-pool");
 const prisma = require("./db/prisma"); // ADD THIS

@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const util = require("util");
 const { userSchema } = require("../validation/userSchema");
-const prisma = require("../db/prisma"); // REPLACED pool with prisma
+const prisma = require("../db/prisma");
 
 const scrypt = util.promisify(crypto.scrypt);
 
@@ -34,7 +34,7 @@ const register = async (req, res, next) => {
       select: { id: true, name: true, email: true },
     });
   } catch (err) {
-    if (err.code === "P2002") {
+    if (err.name === "PrismaClientKnownRequestError" && err.code === "P2002") {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ message: "Email is already registered." });
@@ -67,7 +67,7 @@ const logon = async (req, res, next) => {
     }
     global.user_id = user.id;
     const token = jwt.sign(
-      { userId: user.id, name: user.name },
+      { id: user.id, name: user.name }, // CHANGED: userId -> id
       process.env.JWT_SECRET || "your_secret",
       { expiresIn: "1h" }
     );
