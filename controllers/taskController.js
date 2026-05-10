@@ -8,7 +8,7 @@ exports.create = async (req, res, next) => {
   if (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({ message: error.message });
   }
-  const userId = req.user?.id ?? global.user_id; // CHANGED: userId -> id
+  const userId = req.user?.id ?? global.user_id;
   try {
     const task = await prisma.task.create({
       data: {
@@ -25,12 +25,13 @@ exports.create = async (req, res, next) => {
 };
 
 exports.index = async (req, res, next) => {
-  const userId = req.user?.id ?? global.user_id; // CHANGED: userId -> id
+  const userId = req.user?.id ?? global.user_id;
   try {
     const tasks = await prisma.task.findMany({
       where: { userId: userId },
       select: { id: true, title: true, isCompleted: true },
     });
+    // REVERTED: tests expect 404 when no tasks found
     if (tasks.length === 0) {
       return res
         .status(StatusCodes.NOT_FOUND)
@@ -49,7 +50,7 @@ exports.show = async (req, res, next) => {
       .status(StatusCodes.BAD_REQUEST)
       .json({ message: "The task ID passed is not valid." });
   }
-  const userId = req.user?.id ?? global.user_id; // CHANGED: userId -> id
+  const userId = req.user?.id ?? global.user_id;
   try {
     const task = await prisma.task.findUnique({
       where: {
@@ -85,7 +86,7 @@ exports.update = async (req, res, next) => {
   if (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({ message: error.message });
   }
-  const userId = req.user?.id ?? global.user_id; // CHANGED: userId -> id
+  const userId = req.user?.id ?? global.user_id;
   try {
     const task = await prisma.task.update({
       data: value,
@@ -115,7 +116,7 @@ exports.deleteTask = async (req, res, next) => {
       .status(StatusCodes.BAD_REQUEST)
       .json({ message: "The task ID passed is not valid." });
   }
-  const userId = req.user?.id ?? global.user_id; // CHANGED: userId -> id
+  const userId = req.user?.id ?? global.user_id;
   try {
     const task = await prisma.task.delete({
       where: {
