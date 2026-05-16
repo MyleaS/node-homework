@@ -2,18 +2,14 @@ const express = require("express");
 const errorHandler = require("./middleware/error-handler");
 const notFound = require("./middleware/not-found");
 const userRouter = require("./routes/userRoutes");
-
-// ✅ ADD THESE
 const authMiddleware = require("./middleware/auth");
-const taskRouter = require("./routers/taskRoutes");
+const taskRouter = require("./routes/taskRoutes");
+const prisma = require("./db/prisma"); // ONLY database client needed
 
-const pool = require("./db/pg-pool");
 const app = express();
 
 // Global state
 global.user_id = null;
-global.users = [];
-global.tasks = [];
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -33,12 +29,12 @@ app.get("/", (req, res) => {
 
 app.get("/health", async (req, res) => {
   try {
-    await pool.query("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
     res.json({ status: "ok", db: "connected" });
   } catch (err) {
     res
       .status(500)
-      .json({ message: `db not connected, error: ${err.message}` });
+      .json({ status: "error", db: "not connected", error: err.message });
   }
 });
 
@@ -49,7 +45,7 @@ app.post("/testpost", (req, res) => {
 // User routes (NOT protected)
 app.use("/api/users", userRouter);
 
-// ✅ PROTECTED task routes
+// Protected task routes
 app.use("/api/tasks", authMiddleware, taskRouter);
 
 // Error handling (keep these LAST)
@@ -76,7 +72,8 @@ async function shutdown(code = 0) {
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
   try {
-    await pool.end();
+    await prisma.$disconnect(); // ONLY prisma disconnect -- pool.end() removed
+    console.log("Prisma disconnected.");
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
   } catch (err) {
