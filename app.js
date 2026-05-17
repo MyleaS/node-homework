@@ -4,7 +4,8 @@ const notFound = require("./middleware/not-found");
 const userRouter = require("./routes/userRoutes");
 const authMiddleware = require("./middleware/auth");
 const taskRouter = require("./routes/taskRoutes");
-const prisma = require("./db/prisma"); // ONLY database client needed
+const analyticsRouter = require("./routes/analyticsRoutes"); // ← ADD THIS
+const prisma = require("./db/prisma");
 
 const app = express();
 
@@ -48,6 +49,9 @@ app.use("/api/users", userRouter);
 // Protected task routes
 app.use("/api/tasks", authMiddleware, taskRouter);
 
+// Protected analytics routes
+app.use("/api/analytics", authMiddleware, analyticsRouter); // ← ADD THIS
+
 // Error handling (keep these LAST)
 app.use(notFound);
 app.use(errorHandler);
@@ -72,7 +76,7 @@ async function shutdown(code = 0) {
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
   try {
-    await prisma.$disconnect(); // ONLY prisma disconnect -- pool.end() removed
+    await prisma.$disconnect();
     console.log("Prisma disconnected.");
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
