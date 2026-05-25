@@ -24,7 +24,7 @@ exports.create = async (req, res, next) => {
   if (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({ message: error.message });
   }
-  const userId = req.user?.id ?? global.user_id;
+  const userId = req.user.id;
   try {
     const task = await prisma.task.create({
       data: {
@@ -42,13 +42,12 @@ exports.create = async (req, res, next) => {
 };
 
 exports.index = async (req, res, next) => {
-  const userId = req.user?.id ?? global.user_id;
+  const userId = req.user.id;
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
-    // Build where clause with optional search filter
     const whereClause = { userId };
     if (req.query.find) {
       whereClause.title = {
@@ -98,7 +97,7 @@ exports.show = async (req, res, next) => {
       .status(StatusCodes.BAD_REQUEST)
       .json({ message: "The task ID passed is not valid." });
   }
-  const userId = req.user?.id ?? global.user_id;
+  const userId = req.user.id;
   try {
     const task = await prisma.task.findUnique({
       where: {
@@ -127,10 +126,9 @@ exports.show = async (req, res, next) => {
   }
 };
 
-// POST /api/tasks/bulk — bulk create tasks
 exports.bulkCreate = async (req, res, next) => {
   const { tasks } = req.body;
-  const userId = req.user?.id ?? global.user_id;
+  const userId = req.user.id;
 
   if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
     return res
@@ -183,7 +181,7 @@ exports.update = async (req, res, next) => {
   if (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({ message: error.message });
   }
-  const userId = req.user?.id ?? global.user_id;
+  const userId = req.user.id;
   try {
     const task = await prisma.task.update({
       data: value,
@@ -213,7 +211,7 @@ exports.deleteTask = async (req, res, next) => {
       .status(StatusCodes.BAD_REQUEST)
       .json({ message: "The task ID passed is not valid." });
   }
-  const userId = req.user?.id ?? global.user_id;
+  const userId = req.user.id;
   try {
     const task = await prisma.task.delete({
       where: {
