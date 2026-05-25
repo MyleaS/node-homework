@@ -12,7 +12,8 @@ const scrypt = util.promisify(crypto.scrypt);
 const cookieFlags = (req) => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "Strict",
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+  ...(process.env.NODE_ENV === "production" && { domain: req.hostname }),
 });
 
 const setJwtCookie = (req, res, user) => {

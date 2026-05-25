@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const { xss } = require("express-xss-sanitizer");
@@ -6,7 +7,7 @@ const rateLimiter = require("express-rate-limit");
 const errorHandler = require("./middleware/error-handler");
 const notFound = require("./middleware/not-found");
 const userRouter = require("./routes/userRoutes");
-const jwtMiddleware = require("./middleware/jwtMiddleware"); // ← replaced authMiddleware
+const jwtMiddleware = require("./middleware/jwtMiddleware");
 const taskRouter = require("./routes/taskRoutes");
 const analyticsRouter = require("./routes/analyticsRoutes");
 const prisma = require("./db/prisma");
@@ -14,6 +15,16 @@ const prisma = require("./db/prisma");
 const app = express();
 
 app.set("trust proxy", 1);
+
+// CORS — before other middleware
+app.use(
+  cors({
+    origin: ["http://localhost:3001"],
+    credentials: true,
+    methods: "GET,POST,PATCH,DELETE",
+    allowedHeaders: "CONTENT-TYPE, X-CSRF-TOKEN",
+  })
+);
 
 // 1. Rate limiter — FIRST
 app.use(
@@ -67,10 +78,10 @@ app.post("/testpost", (req, res) => {
 app.use("/api/users", userRouter);
 
 // Protected task routes
-app.use("/api/tasks", jwtMiddleware, taskRouter); // ← replaced authMiddleware
+app.use("/api/tasks", jwtMiddleware, taskRouter);
 
 // Protected analytics routes
-app.use("/api/analytics", jwtMiddleware, analyticsRouter); // ← replaced authMiddleware
+app.use("/api/analytics", jwtMiddleware, analyticsRouter);
 
 // Error handling (keep these LAST)
 app.use(notFound);
