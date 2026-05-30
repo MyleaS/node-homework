@@ -76,6 +76,7 @@ describe("testing task creation", () => {
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
     await waitForRouteHandlerCompletion(create, req, saveRes);
     expect(saveRes.statusCode).toBe(201);
+    saveTaskId = saveRes._getJSONData().id;
   });
 
   it("17. returned object has the expected title", () => {
@@ -89,7 +90,6 @@ describe("testing task creation", () => {
 
   it("19. returned object does not have a userId", () => {
     expect(saveData.userId).toBeUndefined();
-    saveTaskId = saveData.id;
   });
 });
 
@@ -126,12 +126,12 @@ describe("test getting created tasks", () => {
     expect(saveData.tasks[0].userId).toBeUndefined();
   });
 
-  it("25. using user2 id on index() returns a 200 with empty tasks", async () => {
+  it("25. using user2 id on index() returns a 404", async () => {
     const req = httpMocks.createRequest({ method: "GET" });
     req.user = { id: user2.id };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
     await waitForRouteHandlerCompletion(index, req, saveRes);
-    expect(saveRes.statusCode).toBe(200);
+    expect(saveRes.statusCode).toBe(404);
   });
 
   it("26. can retrieve the created task using show()", async () => {
@@ -201,7 +201,6 @@ describe("testing update and delete of tasks", () => {
     req.user = { id: user1.id };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
     await waitForRouteHandlerCompletion(index, req, saveRes);
-    const data = saveRes._getJSONData();
-    expect(data.tasks.length).toBe(0);
+    expect(saveRes.statusCode).toBe(404);
   });
 });
