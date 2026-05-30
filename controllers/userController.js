@@ -2,11 +2,28 @@ const { StatusCodes } = require("http-status-codes");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const util = require("util");
+const { randomUUID } = require("crypto");
 const { userSchema } = require("../validation/userSchema");
 const prisma = require("../db/prisma");
 
 const scrypt = util.promisify(crypto.scrypt);
 
+// ── Cookie utilities ────────────────────────────────────────────────
+const cookieFlags = (req) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+  ...(process.env.NODE_ENV === "production" && { domain: req.hostname }),
+});
+
+const setJwtCookie = (req, res, user) => {
+  const payload = { id: user.id, csrfToken: randomUUID() };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+  res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 });
+  return payload.csrfToken;
+};
+
+// ── Password utilities ──────────────────────────────────────────────
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
   const derivedKey = await scrypt(password, salt, 64);
@@ -20,6 +37,7 @@ async function comparePassword(inputPassword, storedHash) {
   return crypto.timingSafeEqual(keyBuffer, derivedKey);
 }
 
+// ── Controllers ─────────────────────────────────────────────────────
 const register = async (req, res, next) => {
   if (!req.body) req.body = {};
   const { error, value } = userSchema.validate(req.body, { abortEarly: false });
@@ -37,9 +55,13 @@ const register = async (req, res, next) => {
       });
 
       const welcomeTaskData = [
-        { title: "Complete your profile", userId: newUser.id, priority: "medium" },
-        { title: "Add your first task",   userId: newUser.id, priority: "high"   },
-        { title: "Explore the app",       userId: newUser.id, priority: "low"    },
+        {
+          title: "Complete your profile",
+          userId: newUser.id,
+          priority: "medium",
+        },
+        { title: "Add your first task", userId: newUser.id, priority: "high" },
+        { title: "Explore the app", userId: newUser.id, priority: "low" },
       ];
       await tx.task.createMany({ data: welcomeTaskData });
 
@@ -60,9 +82,15 @@ const register = async (req, res, next) => {
       return { user: newUser, welcomeTasks };
     });
 
-    global.user_id = result.user.id;
+    // Set JWT cookie and get CSRF token — no more global.user_id!
+    const csrfToken = setJwtCookie(req, res, result.user);
+
     return res.status(StatusCodes.CREATED).json({
-      user: result.user,
+      user: {
+        name: result.user.name,
+        email: result.user.email,
+      },
+      csrfToken,
       welcomeTasks: result.welcomeTasks,
       transactionStatus: "success",
     });
@@ -94,22 +122,20 @@ const logon = async (req, res, next) => {
         .status(StatusCodes.UNAUTHORIZED)
         .json({ message: "Authentication Failed" });
     }
-    global.user_id = user.id;
-    const token = jwt.sign(
-      { id: user.id, name: user.name },
-      process.env.JWT_SECRET || "your_secret",
-      { expiresIn: "1h" }
-    );
+
+    // Set JWT cookie and get CSRF token — no more global.user_id!
+    const csrfToken = setJwtCookie(req, res, user);
+
     return res
       .status(StatusCodes.OK)
-      .json({ name: user.name, email: user.email, token });
+      .json({ name: user.name, email: user.email, csrfToken });
   } catch (err) {
     next(err);
   }
 };
 
 const logoff = (req, res) => {
-  global.user_id = null;
+  res.clearCookie("jwt", cookieFlags(req));
   res.sendStatus(StatusCodes.OK);
 };
 
