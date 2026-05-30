@@ -98,7 +98,7 @@ server.on("error", (err) => {
   } else {
     console.error("Server error:", err);
   }
-  process.exit(1);
+  if (process.env.NODE_ENV !== "test") process.exit(1);
 });
 
 let isShuttingDown = false;
