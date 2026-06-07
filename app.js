@@ -49,7 +49,7 @@ app.use((req, res, next) => {
 app.use(cookieParser());
 
 // 5. Body parsing middleware
-app.use(express.json({ limit: "1kb" }));
+app.use(express.json({ limit: "1mb" }));
 
 // 6. XSS sanitizer — AFTER cookie and body parsers
 app.use(xss());
