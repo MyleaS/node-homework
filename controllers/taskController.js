@@ -84,6 +84,9 @@ exports.index = async (req, res, next) => {
       hasPrev: page > 1,
     };
 
+    if (tasks.length === 0) {
+      return res.status(StatusCodes.NOT_FOUND).json({ message: "No tasks found" });
+    }
     return res.status(StatusCodes.OK).json({ tasks, pagination });
   } catch (err) {
     return next(err);
