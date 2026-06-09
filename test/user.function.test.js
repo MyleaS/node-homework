@@ -5,41 +5,37 @@ const prisma = require("../db/prisma");
 let agent;
 let saveRes;
 const { app, server } = require("../app");
-
 beforeAll(async () => {
   await prisma.Task.deleteMany();
   await prisma.User.deleteMany();
   agent = request.agent(app);
 });
-
 afterAll(async () => {
   prisma.$disconnect();
   server.close();
 });
-
 describe("register a user", () => {
   let saveRes = null;
   let csrfToken = null;
-
   it("46. it creates the user entry", async () => {
     const newUser = {
       name: "John Deere",
       email: "jdeere@example.com",
       password: "Pa$$word20",
     };
-    saveRes = await agent.post("/api/users/register").send(newUser);
+    saveRes = await agent
+      .post("/api/users/register")
+      .set("X-Recaptcha-Test", process.env.RECAPTCHA_BYPASS)
+      .send(newUser);
     expect(saveRes.status).toBe(201);
   });
-
   it("47. registration returns an object with the expected name", () => {
     expect(saveRes.body.user.name).toBe("John Deere");
   });
-
   it("48. returned object includes a csrfToken", () => {
     expect(saveRes.body.csrfToken).toBeDefined();
     csrfToken = saveRes.body.csrfToken;
   });
-
   it("49. can logon as the newly registered user", async () => {
     saveRes = await agent
       .post("/api/users/logon")
@@ -47,19 +43,16 @@ describe("register a user", () => {
     expect(saveRes.status).toBe(200);
     csrfToken = saveRes.body.csrfToken;
   });
-
   it("50. verify logged in: /api/tasks should not return 401", async () => {
     const res = await agent.get("/api/tasks").set("X-CSRF-TOKEN", csrfToken);
     expect(res.status).not.toBe(401);
   });
-
   it("51. can log out", async () => {
     saveRes = await agent
       .post("/api/users/logoff")
       .set("X-CSRF-TOKEN", csrfToken);
     expect(saveRes.status).toBe(200);
   });
-
   it("52. really logged out: /api/tasks should now return 401", async () => {
     const res = await agent.get("/api/tasks");
     expect(res.status).toBe(401);
